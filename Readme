@@ -1,0 +1,18 @@
+seed-sorter/
+├── config.py             # Global constants (FPS, delays, thresholds, mode)
+├── main.py               # Main execution loop
+├── camera/
+│   ├── __init__.py
+│   ├── capture_jetson.py # GStreamer / nvarguscamerasrc pipeline
+│   └── capture_mock.py   # Webcam / MP4 video file reader
+├── detection/
+│   ├── __init__.py
+│   ├── hsv_filter.py     # Fast color & contour thresholding
+│   └── ai_detector.py    # YOLO / TensorRT inference class
+├── actuation/
+│   ├── __init__.py
+│   ├── valve_jetson.py   # libgpiod / Jetson.GPIO driver
+│   └── valve_mock.py     # Virtual logger printing timestamps
+└── tests/
+    └── test_pipeline.py  # Unit tests for trajectory math
+    
