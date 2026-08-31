@@ -7,7 +7,8 @@ import math
 try:
     from camera.capture_mock import MockCamera
     from actuation.valve_mock import MockValveController
-except ImportError:# Fallback for direct script execution
+except ImportError:
+    # Fallback for direct script execution
     from MockCamera import MockCamera
     from MockValveController import MockValveController
 
@@ -20,7 +21,7 @@ VALVE_LATENCY_MS = 3.0      # Mechanical opening delay
 CAMERA_FOV_HEIGHT_M = 0.06  # The physical height the camera sees (e.g., 6 cm)
 CHUTE_TO_TOP_FRAME_M = 0.01 # Distance from chute exit to the top edge of the camera view
 
-def calculate_ejection_delay(y_pixel, frame_height=480): # Note: hsv_tuner resizes to 480
+def calculate_ejection_delay(y_pixel, frame_height=480): 
     # 1. Convert pixel position to physical distance down the frame
     pixel_ratio = y_pixel / float(frame_height)
     distance_down_frame_m = pixel_ratio * CAMERA_FOV_HEIGHT_M
@@ -32,7 +33,6 @@ def calculate_ejection_delay(y_pixel, frame_height=480): # Note: hsv_tuner resiz
     remaining_distance_m = DROP_DISTANCE_M - current_seed_drop_m
     
     # 4. Calculate time for remaining distance (Simplified constant velocity for short drops)
-    # Using v = u + at to find current velocity, then t = d/v for remaining
     current_velocity = INITIAL_VELOCITY_M_S + (GRAVITY * math.sqrt(2 * current_seed_drop_m / GRAVITY))
     t_arrival = remaining_distance_m / current_velocity
     
@@ -41,13 +41,15 @@ def calculate_ejection_delay(y_pixel, frame_height=480): # Note: hsv_tuner resiz
     
     return delay_ms
 
-
 def main():
     video_source = "finalSeedDemo.mp4" if os.path.exists("finalSeedDemo.mp4") else 0
     camera = MockCamera(video_source) if MOCK_MODE else None
     valve = MockValveController(pin=18)
 
     print(f"Starting pipeline in MOCK mode using source: {video_source}")
+
+    TRIGGER_Y_LINE = 240  # The middle of your 480p resized frame
+    
     while True:
         start_compute = time.time()
         ret, frame = camera.read()
@@ -56,28 +58,45 @@ def main():
 
         # --- Phase 2: Mock Defect Detection (HSV Thresholding) ---
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        
         # Sample defect mask: detect dark/discolored seeds
         mask = cv2.inRange(hsv, (0, 0, 0), (179, 255, 87))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for cnt in contours:
-            if cv2.contourArea(cnt) > 100:  # Filter noise
+            if cv2.contourArea(cnt) > 100:
                 x, y, w, h = cv2.boundingRect(cnt)
+                
+                # Calculate the Center of Mass (Centroid) of the seed
+                cy = y + (h // 2)
+                cx = x + (w // 2)
 
-                # Compute latency & schedule pulse
-                compute_latency_ms = (time.time() - start_compute) * 1000.0
-                ejection_delay = calculate_ejection_delay(y) - compute_latency_ms
+                # Draw a blue virtual trigger line across the screen
+                cv2.line(frame, (0, TRIGGER_Y_LINE), (640, TRIGGER_Y_LINE), (255, 0, 0), 1)
 
-                valve.schedule_ejection(ejection_delay)
+                # Draw a green dot at the seed's center
+                cv2.circle(frame, (cx, cy), 4, (0, 255, 0), -1)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
+                # ONLY schedule the ejection if the seed's center is crossing the line
+                # We use a small 10-pixel window to catch it as it falls past
+                if TRIGGER_Y_LINE - 5 < cy < TRIGGER_Y_LINE + 5:
+                    compute_latency_ms = (time.time() - start_compute) * 1000.0
+                    
+                    # Note: Pass the TRIGGER_Y_LINE to the math function instead of y
+                    ejection_delay = calculate_ejection_delay(TRIGGER_Y_LINE) - compute_latency_ms
+                    
+                    valve.schedule_ejection(ejection_delay)
+                    # Change box color to yellow to visually confirm the trigger fired
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 3)
+
+        # Show the simulation window and listen for the 'q' quit command
         cv2.imshow("Sorter Simulation", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     camera.release()
     cv2.destroyAllWindows()
-
 
 if __name__ == "__main__":
     main()
