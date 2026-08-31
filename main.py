@@ -43,7 +43,7 @@ def calculate_ejection_delay(y_pixel, frame_height=480): # Note: hsv_tuner resiz
 
 
 def main():
-    video_source = "demo1.mp4" if os.path.exists("demo1.mp4") else 0
+    video_source = "finalSeedDemo.mp4" if os.path.exists("finalSeedDemo.mp4") else 0
     camera = MockCamera(video_source) if MOCK_MODE else None
     valve = MockValveController(pin=18)
 
@@ -57,7 +57,7 @@ def main():
         # --- Phase 2: Mock Defect Detection (HSV Thresholding) ---
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         # Sample defect mask: detect dark/discolored seeds
-        mask = cv2.inRange(hsv, (0, 0, 0), (180, 255, 60))
+        mask = cv2.inRange(hsv, (0, 0, 0), (179, 255, 87))
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         for cnt in contours:

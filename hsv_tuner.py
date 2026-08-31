@@ -9,7 +9,7 @@ def nothing(x):
 
 
 def main():
-    video_source = "demo1.mp4" if os.path.exists("demo1.mp4") else 0
+    video_source = "finalSeedDemo.mp4" if os.path.exists("finalSeedDemo.mp4") else 0
     cap = cv2.VideoCapture(video_source)
 
     # Create a window with interactive sliders
