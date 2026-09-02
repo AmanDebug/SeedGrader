@@ -42,20 +42,20 @@ def calculate_ejection_delay(y_pixel, frame_height=480):
     return delay_ms
 
 def main():
-    video_source = "finalSeedDemo.mp4" if os.path.exists("finalSeedDemo.mp4") else 0
-    camera = MockCamera(video_source) 
     if MOCK_MODE:
-     camera = MockCamera("finalSeedDemo.mp4")
-     valve = MockValveController(pin=18)
+        video_source = "finalSeedDemo.mp4" if os.path.exists("finalSeedDemo.mp4") else 0
+        camera = MockCamera(video_source)
+        valve = MockValveController(pin=18)
+        print(f"Starting pipeline in MOCK mode using source: {video_source}")
     else:
-     camera = JetsonCamera()
-     valve = JetsonValveController(pin=18)
-
-    print(f"Starting pipeline in MOCK mode using source: {video_source}")
+        camera = JetsonCamera()
+        valve = JetsonValveController(pin=18)
+        print("Starting pipeline in LIVE HARDWARE mode via GStreamer.")
 
     TRIGGER_Y_LINE = 240  # The middle of your 480p resized frame
     
     while True:
+        
         start_compute = time.time()
         ret, frame = camera.read()
         if not ret:
