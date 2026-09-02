@@ -6,14 +6,14 @@ import math
 
 try:
     from camera.capture_mock import MockCamera
+    from camera.capture_jetson import JetsonCamera
     from actuation.valve_mock import MockValveController
+    from actuation.valve_jetson import JetsonValveController
 except ImportError:
-    # Fallback for direct script execution
-    from MockCamera import MockCamera
-    from MockValveController import MockValveController
+    pass # Handle fallback if needed
 
 # Configuration constants
-MOCK_MODE = True
+MOCK_MODE = False
 DROP_DISTANCE_M = 0.08      # 8 cm from camera focal point to air nozzle
 INITIAL_VELOCITY_M_S = 0.5  # Seed exit speed from chute
 GRAVITY = 9.81              # m/s^2
@@ -43,8 +43,13 @@ def calculate_ejection_delay(y_pixel, frame_height=480):
 
 def main():
     video_source = "finalSeedDemo.mp4" if os.path.exists("finalSeedDemo.mp4") else 0
-    camera = MockCamera(video_source) if MOCK_MODE else None
-    valve = MockValveController(pin=18)
+    camera = MockCamera(video_source) 
+    if MOCK_MODE:
+     camera = MockCamera("finalSeedDemo.mp4")
+     valve = MockValveController(pin=18)
+    else:
+     camera = JetsonCamera()
+     valve = JetsonValveController(pin=18)
 
     print(f"Starting pipeline in MOCK mode using source: {video_source}")
 
@@ -96,6 +101,7 @@ def main():
             break
 
     camera.release()
+    if not MOCK_MODE: valve.cleanup()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
